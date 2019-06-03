@@ -1,0 +1,165 @@
+#!/bin/bash
+# DESC  GUI for GNOS firefox::CreateProfile
+# DEPS  yad gnos grun
+
+GNOS_PATH=/usr/local/sbin/gnos
+GNOS_FUNC="i firefox::CreateProfile"
+
+# TODO
+CheckExists () # $1:BASE $2:NAME $3:USER
+{
+    return
+
+    # str::SanitizeStringAllow () # $1:ALLOWED_CHARS $2:INPUT
+    # {
+    #     { echo -n "$2" | tr -c "$1"'_[:alnum:]' '-' ; } 2>/dev/null
+    # }
+
+    # str::SanitizeString () # $*:INPUT
+    # {
+    #     { str::SanitizeStringAllow "" "$*" ; } 2>/dev/null
+    # }
+
+    # local hname=$( str::SanitizeString "$oname" )
+    # local name=${hname,,}
+
+    # local libParent
+    # case $browser in
+    #     palemoon)       libParent="/usr/lib/$browser" ;;
+    #     firefox-trunk)  libParent="/usr/lib/$browser" ;;
+    #     firefox-esr)    libParent="/usr/lib/$browser" ;;
+    #     firefox)        libParent="/usr/lib/$browser" ;;
+    #     waterfox)       libParent="/opt/waterfox" ;;
+    #     basilisk)       libParent="/opt/basilisk" ;;
+    # esac
+    # local applicationIni="$libParent/browser/application-$user-$name.ini"
+
+    # # prevent overwrite
+    # for file in \
+    #     "$icon/$browser-$user-$name.svg" \
+    #     "$applicationIni" \
+    #     "$profileParent" \
+    #     "$desktopLauncher" \
+    #     "$shellLauncher" \
+    #     "$libParent/$browser-$user-$name" ;
+    # do [[ -e "$file" ]] && sys::Die "File already exists, remove it first: $file"
+    # done
+
+}
+
+GuiForm ()
+{
+
+    # user list
+    local users
+    local idx=0
+    for user in $( awk -F: '($3>=1000)&&($1!="nobody"){print $1}' /etc/passwd ) ; do
+        if ! grep '^SystemAccount=true' /var/lib/AccountsService/users/$user &>/dev/null ; then
+            [[ $idx -ne 0 ]] && users="$users!"
+            users="$users$user"
+            ((idx++))
+        fi
+    done
+
+    local res1
+    res1=$(
+        yad --width=370 --center  \
+            --image browser --image-on-top \
+            --window-icon browser \
+            --title "gnos-browser-factory" \
+            --text="Create new browser" \
+            --form \
+            --field=" Name" 'New Browser' \
+            --field=" Base browser":CB 'firefox!^firefox-esr!firefox-trunk!basilisk!palemoon!waterfox' \
+            --field=" Target user":CB "$users" \
+            --field=" Only firefox* support additional features":LBL ""
+    )
+
+    [[ $? -ne 0 ]] && return
+
+    IFS="|" read -a res1a <<<"$res1"
+    local name base user
+    name="${res1a[0]}"
+    base="${res1a[1]}"
+    user="${res1a[2]}"
+
+
+# TODO CHECK $name NOT EXISTS
+# CheckExists $base $name $user
+
+
+    declare -a yargs
+
+    if [[ $base =~ ^firefox ]] ; then
+    # if [[ "$base" == "firefox-esr" ]] ; then
+
+        local ff_vers=60
+
+        local ff_feat=firefox_${ff_vers}_feat
+
+        IFS="|" read -a data < <( "$GNOS_PATH" i firefox::GetFeaturesList "$ff_feat" 2>/dev/null )
+
+        yargs+=(--field="\n Select features:":LBL)
+        yargs+=("")
+
+        local feat lbl
+        for ((i=0; i<${#data[*]}; i=i+3 )); do
+
+            feat=${data[i]}
+            featz+=($feat)
+
+            lbl=${data[i+1]}
+            [[ -z "$lbl" ]] && lbl=${feat#*::}
+
+            def=${data[i+2]}
+
+            yargs+=(--field=" $lbl":CHK)
+            yargs+=($def)
+        done
+
+    fi
+
+
+    local res2
+    res2=$(
+        yad --width=370 --center  \
+            --image browser --image-on-top \
+            --window-icon browser \
+            --title "gnos-browser-factory" \
+            --text="Configure new browser" \
+            --form \
+            --field=" Accent color":CLR '#e87a34' \
+            --field=" Secondary color":CLR '#625F5C' \
+            "${yargs[@]}"
+            #CC2288 flashy pink
+    )
+
+    [[ $? -ne 0 ]] && return
+
+    IFS="|" read -a res2a <<<"$res2"
+    local col1 col2
+    col1="${res2a[0]}"
+    col2="${res2a[1]}"
+    col1=${col1###}
+    col2=${col2###}
+
+    declare -a feats
+
+    if [[ $base =~ ^firefox ]] ; then
+        res2a=( "${res2a[@]:3}" )
+        local idx=0
+        for feat in "${featz[@]}" ; do
+            [[ "${res2a[$idx]}" == "TRUE" ]] && feats+=(${feat#*::})
+            ((idx++))
+        done
+    fi
+
+    grun gnome-terminal -x bash -cx 'sudo KEEP_HTTP_DOWNLOADS=/tmp/gnos-browser-factory.cache "'"$GNOS_PATH"'" '"$GNOS_FUNC"' '"$base"' '"$user"' "'"$name"'" "'"$col1:$col2"'" "'"$( echo $( for i in ${feats[@]}; do echo $i ; done ) )"'" ; read -p "TERMINATED: [ENTER] to close"'
+}
+
+
+# MAIN
+
+[[ $( id -u ) == "0" ]] || exec pkexec env DISPLAY=$DISPLAY "$BASH_SOURCE" "$@"
+
+GuiForm
