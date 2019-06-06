@@ -2,8 +2,9 @@
 # DESC  GUI for GNOS firefox::CreateProfile
 # DEPS  yad gnos grun
 
-GNOS_PATH=/usr/local/sbin/gnos
-GNOS_FUNC="i firefox::CreateProfile"
+GNOS_PATH=gnowledge
+GNOS_LIST="Internal firefox::GetFeaturesList"
+GNOS_FUNC="Internal firefox::CreateProfile"
 
 # TODO
 CheckExists () # $1:BASE $2:NAME $3:USER
@@ -97,7 +98,7 @@ GuiForm ()
 
         local ff_feat=firefox_${ff_vers}_feat
 
-        IFS="|" read -a data < <( "$GNOS_PATH" i firefox::GetFeaturesList "$ff_feat" 2>/dev/null )
+        IFS="|" read -a data < <( "$GNOS_PATH" $GNOS_LIST "$ff_feat" 2>/dev/null )
 
         yargs+=(--field="\n Select features:":LBL)
         yargs+=("")
