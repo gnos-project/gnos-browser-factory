@@ -5,7 +5,7 @@
 GUI to create isolated custom Firefox profiles
 
 - Personalize name & colors
-- Configure additional features list
+- Configure additional features list, see [documentation](https://gnos.in/gnos-browser-factory)
 - Supports Firefox, Firefox ESR & Nightly
 
 ## Usage
