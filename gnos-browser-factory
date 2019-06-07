@@ -1,5 +1,5 @@
 #!/bin/bash
-# DESC  GUI for GNOS firefox::CreateProfile
+# DESC  GUI for GNOS Gnowledge firefox::CreateProfile
 # DEPS  yad gnos grun
 
 GNOS_PATH=gnowledge
@@ -132,7 +132,6 @@ GuiForm ()
             --field=" Accent color":CLR '#e87a34' \
             --field=" Secondary color":CLR '#625F5C' \
             "${yargs[@]}"
-            #CC2288 flashy pink
     )
 
     [[ $? -ne 0 ]] && return
